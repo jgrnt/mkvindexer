@@ -8,7 +8,11 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/op/go-logging"
 )
+
+var log = logging.MustGetLogger("mkvextract")
 
 const mkvinfoTitlePrefix = "| + Title:"
 const mkvinfoDurationPrefix = "| + Duration:"
@@ -16,7 +20,7 @@ const mkvinfoDurationPrefix = "| + Duration:"
 type MkvInfo struct {
 	fileName string
 	title    string
-	chapters []Chapter
+	chapters []*Chapter
 }
 type Chapter struct {
 	name  string
@@ -31,7 +35,7 @@ func (TitleNotFound) Error() string {
 }
 
 func ExtractMetadata(fileName string) (info MkvInfo, err error) {
-	info = MkvInfo{fileName: fileName, chapters: make([]Chapter, 0, 2)}
+	info = MkvInfo{fileName: fileName, chapters: make([]*Chapter, 0, 2)}
 	var titleDuration time.Duration
 	if info.title, titleDuration, err = extractTitle(fileName); err != nil {
 		return
@@ -43,6 +47,7 @@ func ExtractMetadata(fileName string) (info MkvInfo, err error) {
 		} else {
 			chapter.end = info.chapters[i+1].start
 		}
+		log.Debug("%s Found chapter: %s", fileName, chapter)
 	}
 	return
 }
@@ -88,7 +93,7 @@ func extractTitle(fileName string) (title string, duration time.Duration, err er
 	return
 }
 
-func extractChapter(fileName string, chapters *[]Chapter) (err error) {
+func extractChapter(fileName string, chapters *[]*Chapter) (err error) {
 	info := exec.Command("mkvextract", "chapters", "-s", "--output-charset", " UTF-8", fileName)
 	cmdReader, err := info.StdoutPipe()
 	infoReader := bufio.NewReader(cmdReader)
@@ -116,7 +121,7 @@ func extractChapter(fileName string, chapters *[]Chapter) (err error) {
 		if err != nil {
 			return
 		}
-		*chapters = append(*chapters, Chapter{name: extractField(lineTitle), start: duration})
+		*chapters = append(*chapters, &Chapter{name: extractField(lineTitle), start: duration})
 
 	}
 	err = info.Wait()
