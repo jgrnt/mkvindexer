@@ -14,18 +14,18 @@ import (
 
 var log = logging.MustGetLogger("mkvextract")
 
-const mkvinfoTitlePrefix = "| + Title:"
+const mkvinfoTitlePrefix = "| + Title: "
 const mkvinfoDurationPrefix = "| + Duration:"
 
 type MkvInfo struct {
-	fileName string
-	title    string
-	chapters []*Chapter
+	FileName string
+	Title    string
+	Chapters []*Chapter
 }
 type Chapter struct {
-	name  string
-	start time.Duration
-	end   time.Duration
+	Name  string
+	Start time.Duration
+	End   time.Duration
 }
 
 type TitleNotFound struct{}
@@ -35,17 +35,17 @@ func (TitleNotFound) Error() string {
 }
 
 func ExtractMetadata(fileName string) (info MkvInfo, err error) {
-	info = MkvInfo{fileName: fileName, chapters: make([]*Chapter, 0, 2)}
+	info = MkvInfo{FileName: fileName, Chapters: make([]*Chapter, 0, 2)}
 	var titleDuration time.Duration
-	if info.title, titleDuration, err = extractTitle(fileName); err != nil {
+	if info.Title, titleDuration, err = extractTitle(fileName); err != nil {
 		return
 	}
-	err = extractChapter(fileName, &info.chapters)
-	for i, chapter := range info.chapters {
-		if i == len(info.chapters)-1 {
-			chapter.end = titleDuration
+	err = extractChapter(fileName, &info.Chapters)
+	for i, chapter := range info.Chapters {
+		if i == len(info.Chapters)-1 {
+			chapter.End = titleDuration
 		} else {
-			chapter.end = info.chapters[i+1].start
+			chapter.End = info.Chapters[i+1].Start
 		}
 		log.Debug("%s Found chapter: %s", fileName, chapter)
 	}
@@ -121,7 +121,7 @@ func extractChapter(fileName string, chapters *[]*Chapter) (err error) {
 		if err != nil {
 			return
 		}
-		*chapters = append(*chapters, &Chapter{name: extractField(lineTitle), start: duration})
+		*chapters = append(*chapters, &Chapter{Name: extractField(lineTitle), Start: duration})
 
 	}
 	err = info.Wait()
