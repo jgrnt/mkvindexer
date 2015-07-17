@@ -3,7 +3,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"os"
 
 	"github.com/jgrnt/mkvindexer/mkvextract"
@@ -11,6 +10,7 @@ import (
 	"sort"
 
 	"github.com/codegangsta/cli"
+	"github.com/op/go-logging"
 )
 
 type ResultMessage struct {
@@ -37,13 +37,15 @@ func (r ByName) Len() int           { return len(r) }
 func (a ByName) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a ByName) Less(i, j int) bool { return a[i].File < a[j].File }
 
+var log = logging.MustGetLogger("mkvindexer")
+
 func proccessMkv(file string, channel chan ResultMessage) {
 	info, err := mkvextract.ExtractMetadata(file)
 	if err != nil {
 		channel <- ResultMessage{file, Error, err}
 		return
 	}
-	log.Println(info)
+	log.Debug("%s", info)
 	channel <- ResultMessage{file, Indexed, nil}
 
 }
@@ -59,12 +61,26 @@ func coordinateMkvs(fileNames []string) {
 	}
 	sort.Sort(ByName(results))
 	for _, res := range results {
-		fmt.Println(res)
+		switch res.Result {
+		case Indexed:
+			log.Info("%s", res)
+		case AlreadyIndexed:
+			log.Warning("%s", res)
+		case Error:
+			log.Error("%s", res)
+		}
+
 	}
 	//Output afterwards
 }
 
 func main() {
+
+	logging.SetFormatter(logging.MustStringFormatter(
+		"%{color}%{time:15:04:05.000} %{shortfunc} ▶ %{level:.4s} %{color:reset} %{message}",
+	))
+	logging.SetLevel(logging.DEBUG, "")
+
 	app := cli.NewApp()
 	app.Name = "MkvIndexer"
 	app.Action = func(c *cli.Context) {
