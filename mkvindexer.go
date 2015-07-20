@@ -27,7 +27,7 @@ const (
 )
 
 func (r ResultMessage) String() string {
-	return fmt.Sprintf("%10s:%s %v", r.Result, r.File, r.Error)
+	return fmt.Sprintf("%14s:%s %v", r.Result, r.File, r.Error)
 }
 
 //Sort
@@ -37,16 +37,17 @@ func (r ByName) Len() int           { return len(r) }
 func (a ByName) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a ByName) Less(i, j int) bool { return a[i].File < a[j].File }
 
-var log = logging.MustGetLogger("mkvindexer")
+var logger = logging.MustGetLogger("mkvindexer")
 
-func proccessMkv(file string, channel chan ResultMessage) {
+func proccessMkv(file string, channel chan<- ResultMessage) {
 	info, err := mkvextract.ExtractMetadata(file)
 	if err != nil {
 		channel <- ResultMessage{file, Error, err}
 		return
 	}
-	log.Debug("%s", info)
-	channel <- ResultMessage{file, Indexed, nil}
+	res, err := AddMovie(info)
+	logger.Debug("Add of %s resulted in %s,%s", info, res, err)
+	channel <- ResultMessage{file, res, err}
 
 }
 
@@ -63,11 +64,11 @@ func coordinateMkvs(fileNames []string) {
 	for _, res := range results {
 		switch res.Result {
 		case Indexed:
-			log.Info("%s", res)
+			logger.Info("%s", res)
 		case AlreadyIndexed:
-			log.Warning("%s", res)
+			logger.Warning("%s", res)
 		case Error:
-			log.Error("%s", res)
+			logger.Error("%s", res)
 		}
 
 	}
